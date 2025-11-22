@@ -1,0 +1,189 @@
+name: Destroy Infrastructure (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project-name:
+        description: 'Project name (e.g., py-azure-health, pwsh-azure-health, ts-azure-health)'
+        required: true
+        type: string
+      environment:
+        description: 'Environment to destroy (dev, staging, prod)'
+        required: true
+        type: string
+      resource-group:
+        description: 'Resource group name'
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  MAX_RETRY_ATTEMPTS: 5
+  RETRY_BASE_DELAY: 2
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.project-name }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared workflows
+        uses: actions/checkout@v6
+        with:
+          repository: stuartshay/shared-azure-health
+          path: .shared
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup retry utilities
+        run: |
+          cp .shared/scripts/retry-utils.sh /tmp/retry-utils.sh
+          chmod +x /tmp/retry-utils.sh
+
+      - name: Check if resource group exists
+        id: check_rg
+        run: |
+          if az group exists --name "${{ inputs.resource-group }}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Resource group exists: ${{ inputs.resource-group }}"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ Resource group does not exist: ${{ inputs.resource-group }}"
+          fi
+
+      - name: Display warning
+        if: steps.check_rg.outputs.exists == 'true'
+        run: |
+          echo "## ⚠️ WARNING: Destructive Operation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "You are about to destroy **${{ inputs.project-name }}** infrastructure in the **${{ inputs.environment }}** environment." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Resource Group: \`${{ inputs.resource-group }}\` (will be preserved)" >> $GITHUB_STEP_SUMMARY
+          echo "- Filter: Resources tagged with \`project=${{ inputs.project-name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: List resources to be deleted
+        if: steps.check_rg.outputs.exists == 'true'
+        run: |
+          echo "📋 Listing ${{ inputs.project-name }} resources..."
+          echo ""
+          echo "Resources tagged with 'project=${{ inputs.project-name }}' in resource group ${{ inputs.resource-group }}:"
+          echo ""
+
+          az resource list \
+            --resource-group "${{ inputs.resource-group }}" \
+            --query "[?tags.project=='${{ inputs.project-name }}'].{Name:name, Type:type, Location:location}" \
+            --output table
+
+          # Add to summary
+          {
+            echo "### Resources to be Deleted"
+            echo ""
+            echo '```'
+            az resource list \
+              --resource-group "${{ inputs.resource-group }}" \
+              --query "[?tags.project=='${{ inputs.project-name }}'].{Name:name, Type:type}" \
+              --output table
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Delete resources with retry logic
+        if: steps.check_rg.outputs.exists == 'true'
+        shell: bash
+        run: |
+          source /tmp/retry-utils.sh
+
+          echo "🗑️ Deleting resources tagged with 'project=${{ inputs.project-name }}'..."
+
+          # Get all resources with the project tag
+          RESOURCE_IDS=$(az resource list \
+            --resource-group "${{ inputs.resource-group }}" \
+            --query "[?tags.project=='${{ inputs.project-name }}'].id" \
+            --output tsv)
+
+          if [ -z "$RESOURCE_IDS" ]; then
+            echo "⚠️ No ${{ inputs.project-name }} resources found to delete"
+            exit 0
+          fi
+
+          # Count resources
+          RESOURCE_COUNT=$(echo "$RESOURCE_IDS" | wc -l)
+          echo "Found $RESOURCE_COUNT resources to delete"
+          echo ""
+
+          # Delete each resource with retry
+          DELETED_COUNT=0
+          FAILED_COUNT=0
+
+          while IFS= read -r RESOURCE_ID; do
+            if [ -n "$RESOURCE_ID" ]; then
+              RESOURCE_NAME=$(basename "$RESOURCE_ID")
+              RESOURCE_TYPE=$(echo "$RESOURCE_ID" | awk -F'/providers/' '{print $2}' | cut -d'/' -f1,2)
+
+              echo "Deleting: $RESOURCE_NAME ($RESOURCE_TYPE)"
+
+              if retry_azure_operation \
+                "$MAX_RETRY_ATTEMPTS" \
+                "Delete resource $RESOURCE_NAME" \
+                az resource delete --ids "$RESOURCE_ID"; then
+                echo "  ✅ Deleted successfully"
+                ((DELETED_COUNT++))
+              else
+                echo "  ⚠️ Failed to delete (may require manual cleanup)"
+                ((FAILED_COUNT++))
+              fi
+              echo ""
+            fi
+          done <<< "$RESOURCE_IDS"
+
+          echo "================================================"
+          echo "Summary: $DELETED_COUNT deleted, $FAILED_COUNT failed"
+          echo "================================================"
+
+          if [ $DELETED_COUNT -gt 0 ]; then
+            echo "✅ Successfully deleted $DELETED_COUNT ${{ inputs.project-name }} resources"
+          fi
+
+          if [ $FAILED_COUNT -gt 0 ]; then
+            echo "⚠️ $FAILED_COUNT resources failed to delete and may require manual cleanup"
+            exit 1
+          fi
+
+      - name: Display summary
+        if: always() && steps.check_rg.outputs.exists == 'true'
+        run: |
+          echo "## 🗑️ Destruction Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Project | ${{ inputs.project-name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | ${{ inputs.resource-group }} (preserved) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Filter | Resources tagged with \`project=${{ inputs.project-name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### What Was Preserved" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ The resource group and all resources from other projects remain intact." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Shared infrastructure used by other applications was not affected." >> $GITHUB_STEP_SUMMARY
+
+      - name: Skip deletion
+        if: steps.check_rg.outputs.exists == 'false'
+        run: |
+          echo "ℹ️ No action needed - resource group does not exist" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Resource Group:** \`${{ inputs.resource-group }}\`" >> $GITHUB_STEP_SUMMARY

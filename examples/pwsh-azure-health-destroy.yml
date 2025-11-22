@@ -1,0 +1,29 @@
+name: Infrastructure Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: 'dev'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  destroy:
+    uses: stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@main
+    with:
+      project-name: pwsh-azure-health
+      environment: ${{ inputs.environment }}
+      resource-group: rg-azure-health-${{ inputs.environment }}
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
