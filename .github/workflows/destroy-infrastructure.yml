@@ -152,8 +152,8 @@ jobs:
             fi
           done <<< "$RESOURCE_IDS"
 
-          # Remove trailing newline
-          SORTED_RESOURCE_IDS=$(echo -n "$SORTED_RESOURCE_IDS" | sed '$ s/\n$//')
+          # Remove trailing newline (use parameter expansion instead of sed)
+          SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS%$'\n'}"
 
           DELETED_COUNT=0
           FAILED_COUNT=0
