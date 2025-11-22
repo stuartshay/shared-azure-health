@@ -68,13 +68,15 @@ jobs:
       - name: Display warning
         if: steps.check_rg.outputs.exists == 'true'
         run: |
-          echo "## ⚠️ WARNING: Destructive Operation" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "You are about to destroy **${{ inputs.project-name }}** infrastructure in the **${{ inputs.environment }}** environment." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Resource Group: \`${{ inputs.resource-group }}\` (will be preserved)" >> $GITHUB_STEP_SUMMARY
-          echo "- Filter: Resources tagged with \`project=${{ inputs.project-name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## ⚠️ WARNING: Destructive Operation"
+            echo ""
+            echo "You are about to destroy **${{ inputs.project-name }}** infrastructure in the **${{ inputs.environment }}** environment."
+            echo ""
+            echo "- Resource Group: \`${{ inputs.resource-group }}\` (will be preserved)"
+            echo "- Filter: Resources tagged with \`project=${{ inputs.project-name }}\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: List resources to be deleted
         if: steps.check_rg.outputs.exists == 'true'
@@ -99,7 +101,7 @@ jobs:
               --query "[?tags.project=='${{ inputs.project-name }}'].{Name:name, Type:type}" \
               --output table
             echo '```'
-          } >> $GITHUB_STEP_SUMMARY
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Delete resources with retry logic
         if: steps.check_rg.outputs.exists == 'true'
@@ -166,24 +168,28 @@ jobs:
       - name: Display summary
         if: always() && steps.check_rg.outputs.exists == 'true'
         run: |
-          echo "## 🗑️ Destruction Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Project | ${{ inputs.project-name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource Group | ${{ inputs.resource-group }} (preserved) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Filter | Resources tagged with \`project=${{ inputs.project-name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### What Was Preserved" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ The resource group and all resources from other projects remain intact." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Shared infrastructure used by other applications was not affected." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🗑️ Destruction Summary"
+            echo ""
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Project | ${{ inputs.project-name }} |"
+            echo "| Environment | ${{ inputs.environment }} |"
+            echo "| Resource Group | ${{ inputs.resource-group }} (preserved) |"
+            echo "| Filter | Resources tagged with \`project=${{ inputs.project-name }}\` |"
+            echo ""
+            echo "### What Was Preserved"
+            echo ""
+            echo "✅ The resource group and all resources from other projects remain intact."
+            echo ""
+            echo "✅ Shared infrastructure used by other applications was not affected."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Skip deletion
         if: steps.check_rg.outputs.exists == 'false'
         run: |
-          echo "ℹ️ No action needed - resource group does not exist" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Resource Group:** \`${{ inputs.resource-group }}\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "ℹ️ No action needed - resource group does not exist"
+            echo ""
+            echo "**Resource Group:** \`${{ inputs.resource-group }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
