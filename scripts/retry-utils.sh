@@ -79,6 +79,11 @@ retry_azure_operation() {
     fi
 
     echo "⚠️ $error_type - Retrying in ${delay}s..."
+    # Show the actual error for debugging
+    if [ "$error_type" = "Unknown error" ]; then
+      echo "Error details:" >&2
+      echo "$output" >&2
+    fi
     sleep "$delay"
 
     # Exponential backoff (integer arithmetic only)
