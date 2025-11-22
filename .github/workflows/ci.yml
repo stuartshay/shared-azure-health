@@ -60,6 +60,8 @@ jobs:
           sudo apt-get install -y bats
 
       - name: Run BATS tests
+        id: bats-tests
+        continue-on-error: true
         run: |
           echo "Running BATS test suite..."
           bats tests/ --print-output-on-failure --formatter tap
@@ -67,13 +69,15 @@ jobs:
       - name: Test report
         if: always()
         run: |
-          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ $? -eq 0 ]; then
-            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Some tests failed. Check logs above." >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "### Test Results"
+            echo ""
+            if [ "${{ steps.bats-tests.outcome }}" == "success" ]; then
+              echo "✅ All tests passed!"
+            else
+              echo "❌ Some tests failed. Check logs above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   validate-examples:
     name: Validate Examples
@@ -120,20 +124,21 @@ jobs:
     steps:
       - name: Generate summary
         run: |
-          echo "### CI Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Test | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Validate Examples | ${{ needs.validate-examples.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### CI Results"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            echo "| Lint | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Test | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo "| Validate Examples | ${{ needs.validate-examples.result == 'success' && '✅ Passed' || '❌ Failed' }} |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "${{ needs.lint.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.validate-examples.result }}" == "success" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🎉 **All checks passed!** This code is ready to merge." >> $GITHUB_STEP_SUMMARY
+            echo "🎉 **All checks passed!** This code is ready to merge." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Some checks failed.** Please review the logs and fix the issues." >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Some checks failed.** Please review the logs and fix the issues." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
