@@ -127,6 +127,15 @@ jobs:
           echo "Found $RESOURCE_COUNT resources to delete"
           echo ""
 
+          # Sort resources by deletion priority (Function Apps before App Service Plans)
+          # Priority order: 1) Function Apps, 2) Other resources, 3) App Service Plans
+          FUNCTION_APPS=$(echo "$RESOURCE_IDS" | grep "Microsoft.Web/sites" || true)
+          OTHER_RESOURCES=$(echo "$RESOURCE_IDS" | grep -v "Microsoft.Web/sites" | grep -v "Microsoft.Web/serverFarms" || true)
+          APP_SERVICE_PLANS=$(echo "$RESOURCE_IDS" | grep "Microsoft.Web/serverFarms" || true)
+
+          # Combine in correct deletion order
+          SORTED_RESOURCE_IDS=$(printf "%s\n%s\n%s" "$FUNCTION_APPS" "$OTHER_RESOURCES" "$APP_SERVICE_PLANS" | grep -v '^$')
+
           # Delete each resource with retry
           DELETED_COUNT=0
           FAILED_COUNT=0
@@ -141,7 +150,7 @@ jobs:
               if retry_azure_operation \
                 "$MAX_RETRY_ATTEMPTS" \
                 "Delete resource $RESOURCE_NAME" \
-                az resource delete --ids "$RESOURCE_ID"; then
+                az resource delete --ids "$RESOURCE_ID" --verbose; then
                 echo "  ✅ Deleted successfully"
                 ((DELETED_COUNT++))
               else
@@ -150,7 +159,7 @@ jobs:
               fi
               echo ""
             fi
-          done <<< "$RESOURCE_IDS"
+          done <<< "$SORTED_RESOURCE_IDS"
 
           echo "================================================"
           echo "Summary: $DELETED_COUNT deleted, $FAILED_COUNT failed"
