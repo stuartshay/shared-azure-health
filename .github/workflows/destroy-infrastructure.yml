@@ -129,31 +129,23 @@ jobs:
 
           # Sort resources by deletion priority (Function Apps before App Service Plans)
           # Priority order: 1) Function Apps, 2) Other resources, 3) App Service Plans
-          SORTED_RESOURCE_IDS=""
+          # Use temp file to avoid issues with bash -e and string manipulation
+          TEMP_FILE=$(mktemp)
 
           # Add Function Apps first
-          while IFS= read -r line; do
-            if [[ "$line" == *"Microsoft.Web/sites"* ]] && [[ -n "$line" ]]; then
-              SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS}${line}"$'\n'
-            fi
-          done <<< "$RESOURCE_IDS"
+          echo "$RESOURCE_IDS" | while IFS= read -r line; do
+            [[ "$line" == *"Microsoft.Web/sites"* ]] && [[ -n "$line" ]] && echo "$line"
+          done > "$TEMP_FILE"
 
           # Add other resources (not Function Apps, not App Service Plans)
-          while IFS= read -r line; do
-            if [[ "$line" != *"Microsoft.Web/sites"* ]] && [[ "$line" != *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]]; then
-              SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS}${line}"$'\n'
-            fi
-          done <<< "$RESOURCE_IDS"
+          echo "$RESOURCE_IDS" | while IFS= read -r line; do
+            [[ "$line" != *"Microsoft.Web/sites"* ]] && [[ "$line" != *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]] && echo "$line"
+          done >> "$TEMP_FILE"
 
           # Add App Service Plans last
-          while IFS= read -r line; do
-            if [[ "$line" == *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]]; then
-              SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS}${line}"$'\n'
-            fi
-          done <<< "$RESOURCE_IDS"
-
-          # Remove trailing newline (use parameter expansion instead of sed)
-          SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS%$'\n'}"
+          echo "$RESOURCE_IDS" | while IFS= read -r line; do
+            [[ "$line" == *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]] && echo "$line"
+          done >> "$TEMP_FILE"
 
           DELETED_COUNT=0
           FAILED_COUNT=0
@@ -170,14 +162,16 @@ jobs:
                 "Delete resource $RESOURCE_NAME" \
                 az resource delete --ids "$RESOURCE_ID" --verbose; then
                 echo "  ✅ Deleted successfully"
-                ((DELETED_COUNT++))
+                DELETED_COUNT=$((DELETED_COUNT + 1))
               else
                 echo "  ⚠️ Failed to delete (may require manual cleanup)"
-                ((FAILED_COUNT++))
+                FAILED_COUNT=$((FAILED_COUNT + 1))
               fi
               echo ""
             fi
-          done <<< "$SORTED_RESOURCE_IDS"
+          done < "$TEMP_FILE"
+
+          rm -f "$TEMP_FILE"
 
           echo "================================================"
           echo "Summary: $DELETED_COUNT deleted, $FAILED_COUNT failed"
