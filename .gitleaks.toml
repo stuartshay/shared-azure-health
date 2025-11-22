@@ -1,0 +1,22 @@
+# Gitleaks configuration for shared-azure-health
+
+title = "Gitleaks Configuration for Shared Azure Health Workflows"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for false positives"
+paths = [
+  '''\.github/workflows/.*\.yml$''',
+  '''examples/.*\.yml$''',
+]
+
+# Allow non-sensitive example values in documentation
+regexes = [
+  '''example\.com''',
+  '''<your-.*>''',
+  '''<project-name>''',
+  '''\$\{\{ secrets\..*\}\}''',
+  '''\$\{\{ inputs\..*\}\}''',
+]
