@@ -81,7 +81,7 @@ retry_azure_operation() {
     echo "⚠️ $error_type - Retrying in ${delay}s..."
     sleep "$delay"
 
-    # Exponential backoff
+    # Exponential backoff (integer arithmetic only)
     delay=$((delay * 2))
     attempt=$((attempt + 1))
   done
