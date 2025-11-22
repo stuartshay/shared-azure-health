@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   destroy:
-    uses: stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@main
+    uses: stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@master
     with:
       project-name: pwsh-azure-health
       environment: ${{ inputs.environment }}

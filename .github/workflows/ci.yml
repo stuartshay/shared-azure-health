@@ -94,7 +94,7 @@ jobs:
           for example in examples/*.yml; do
             echo "Checking $example..."
             # Check that examples reference the correct workflow
-            if ! grep -q "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@main" "$example"; then
+            if ! grep -q "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@master" "$example"; then
               echo "❌ $example does not reference the shared workflow correctly"
               exit 1
             fi

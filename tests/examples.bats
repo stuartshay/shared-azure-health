@@ -35,17 +35,17 @@ setup() {
 }
 
 @test "examples: py-azure-health calls shared workflow" {
-  run grep "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@main" "${EXAMPLES_DIR}/py-azure-health-destroy.yml"
+  run grep "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@master" "${EXAMPLES_DIR}/py-azure-health-destroy.yml"
   [ "$status" -eq 0 ]
 }
 
 @test "examples: pwsh-azure-health calls shared workflow" {
-  run grep "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@main" "${EXAMPLES_DIR}/pwsh-azure-health-destroy.yml"
+  run grep "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@master" "${EXAMPLES_DIR}/pwsh-azure-health-destroy.yml"
   [ "$status" -eq 0 ]
 }
 
 @test "examples: ts-azure-health calls shared workflow" {
-  run grep "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@main" "${EXAMPLES_DIR}/ts-azure-health-destroy.yml"
+  run grep "stuartshay/shared-azure-health/.github/workflows/destroy-infrastructure.yml@master" "${EXAMPLES_DIR}/ts-azure-health-destroy.yml"
   [ "$status" -eq 0 ]
 }
 
