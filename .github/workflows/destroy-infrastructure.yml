@@ -135,16 +135,19 @@ jobs:
           # Add Function Apps first
           echo "$RESOURCE_IDS" | while IFS= read -r line; do
             [[ "$line" == *"Microsoft.Web/sites"* ]] && [[ -n "$line" ]] && echo "$line"
+            true  # Always succeed to avoid -e issues
           done > "$TEMP_FILE"
 
           # Add other resources (not Function Apps, not App Service Plans)
           echo "$RESOURCE_IDS" | while IFS= read -r line; do
             [[ "$line" != *"Microsoft.Web/sites"* ]] && [[ "$line" != *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]] && echo "$line"
+            true  # Always succeed to avoid -e issues
           done >> "$TEMP_FILE"
 
           # Add App Service Plans last
           echo "$RESOURCE_IDS" | while IFS= read -r line; do
             [[ "$line" == *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]] && echo "$line"
+            true  # Always succeed to avoid -e issues
           done >> "$TEMP_FILE"
 
           DELETED_COUNT=0
