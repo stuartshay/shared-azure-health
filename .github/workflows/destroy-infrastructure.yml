@@ -129,12 +129,32 @@ jobs:
 
           # Sort resources by deletion priority (Function Apps before App Service Plans)
           # Priority order: 1) Function Apps, 2) Other resources, 3) App Service Plans
-          FUNCTION_APPS=$(echo "$RESOURCE_IDS" | { grep "Microsoft.Web/sites" || true; })
-          OTHER_RESOURCES=$(echo "$RESOURCE_IDS" | { grep -v "Microsoft.Web/sites" || true; } | { grep -v "Microsoft.Web/serverFarms" || true; })
-          APP_SERVICE_PLANS=$(echo "$RESOURCE_IDS" | { grep "Microsoft.Web/serverFarms" || true; })
+          SORTED_RESOURCE_IDS=""
 
-          # Combine in correct deletion order
-          SORTED_RESOURCE_IDS=$(printf "%s\n%s\n%s" "$FUNCTION_APPS" "$OTHER_RESOURCES" "$APP_SERVICE_PLANS" | { grep -v '^$' || true; })
+          # Add Function Apps first
+          while IFS= read -r line; do
+            if [[ "$line" == *"Microsoft.Web/sites"* ]] && [[ -n "$line" ]]; then
+              SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS}${line}"$'\n'
+            fi
+          done <<< "$RESOURCE_IDS"
+
+          # Add other resources (not Function Apps, not App Service Plans)
+          while IFS= read -r line; do
+            if [[ "$line" != *"Microsoft.Web/sites"* ]] && [[ "$line" != *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]]; then
+              SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS}${line}"$'\n'
+            fi
+          done <<< "$RESOURCE_IDS"
+
+          # Add App Service Plans last
+          while IFS= read -r line; do
+            if [[ "$line" == *"Microsoft.Web/serverFarms"* ]] && [[ -n "$line" ]]; then
+              SORTED_RESOURCE_IDS="${SORTED_RESOURCE_IDS}${line}"$'\n'
+            fi
+          done <<< "$RESOURCE_IDS"
+
+          # Remove trailing newline
+          SORTED_RESOURCE_IDS=$(echo -n "$SORTED_RESOURCE_IDS" | sed '$ s/\n$//')
+
           DELETED_COUNT=0
           FAILED_COUNT=0
 
