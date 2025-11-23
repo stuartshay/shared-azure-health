@@ -108,6 +108,43 @@ if test_url_accessible "https://my-function-app.azurewebsites.net"; then
 fi
 ```
 
+### Deployment Verification Utils (`scripts/deployment-verification.sh`)
+
+Utilities for verifying Azure Function App deployments and infrastructure health.
+
+**Features:**
+- Check Function App running state
+- Test Function App health endpoints
+- Verify storage account connectivity
+- Verify Application Insights configuration
+- Complete deployment verification workflow
+
+**Functions:**
+- `check_function_app_running <function-app-name> <resource-group>`
+- `test_function_app_health <function-app-url>`
+- `verify_storage_account <storage-account-name> <resource-group>`
+- `verify_app_insights <app-insights-name> <resource-group>`
+- `verify_deployment <function-app-name> <storage-account-name> <app-insights-name> <resource-group> <function-url>`
+
+**Usage:**
+
+```bash
+source scripts/deployment-verification.sh
+
+# Check if Function App is running
+if check_function_app_running "my-function-app" "my-rg"; then
+  echo "✅ Function App is running"
+fi
+
+# Run complete deployment verification
+verify_deployment \
+  "my-function-app" \
+  "mystorageaccount" \
+  "my-app-insights" \
+  "my-rg" \
+  "https://my-function-app.azurewebsites.net"
+```
+
 ## Tag Convention
 
 All projects must tag their resources with:
