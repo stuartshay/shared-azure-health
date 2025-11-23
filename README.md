@@ -61,6 +61,7 @@ Provides robust retry logic for Azure CLI operations with exponential backoff.
 - Exponential backoff
 - Permanent failure detection
 - Error type identification
+- Progress messages sent to stderr (doesn't pollute stdout)
 
 **Usage:**
 
@@ -71,6 +72,40 @@ retry_azure_operation \
   5 \
   "Delete storage account" \
   az storage account delete --name myaccount --resource-group myrg --yes
+```
+
+### Key Vault Utils (`scripts/keyvault-utils.sh`)
+
+Utilities for managing Azure Key Vault secrets with validation.
+
+**Features:**
+- Set and retrieve Key Vault secrets
+- Verify secret values
+- Update and verify in one operation
+- URL accessibility testing
+
+**Functions:**
+- `set_keyvault_secret <vault-name> <secret-name> <secret-value>`
+- `get_keyvault_secret <vault-name> <secret-name>`
+- `verify_keyvault_secret <vault-name> <secret-name> <expected-value>`
+- `test_url_accessible <url>`
+- `update_and_verify_keyvault_secret <vault-name> <secret-name> <secret-value>`
+
+**Usage:**
+
+```bash
+source scripts/keyvault-utils.sh
+
+# Update and verify a secret
+update_and_verify_keyvault_secret \
+  "my-keyvault" \
+  "function-app-url" \
+  "https://my-function-app.azurewebsites.net"
+
+# Test if a URL is accessible
+if test_url_accessible "https://my-function-app.azurewebsites.net"; then
+  echo "✅ URL is accessible"
+fi
 ```
 
 ## Tag Convention
