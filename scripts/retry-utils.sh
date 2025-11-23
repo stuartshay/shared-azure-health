@@ -31,7 +31,7 @@ retry_azure_operation() {
   local delay="${RETRY_BASE_DELAY:-2}"
 
   while [ $attempt -le "$max_attempts" ]; do
-    echo "Attempt $attempt/$max_attempts: $description"
+    echo "Attempt $attempt/$max_attempts: $description" >&2
 
     # Execute command and capture both output and exit code
     local output
@@ -46,20 +46,20 @@ retry_azure_operation() {
 
     # Check for permanent failures (don't retry)
     if echo "$output" | grep -qE "(AuthorizationFailed|InvalidAuthenticationToken|Forbidden|InvalidResourceGroupName)"; then
-      echo "❌ Permanent failure detected: $description"
+      echo "❌ Permanent failure detected: $description" >&2
       echo "$output" >&2
       return $exit_code
     fi
 
     # Check for scope locked errors
     if echo "$output" | grep -qE "ScopeLocked"; then
-      echo "❌ Resource is locked. Cannot delete while lock is in place."
+      echo "❌ Resource is locked. Cannot delete while lock is in place." >&2
       echo "$output" >&2
       return $exit_code
     fi
 
     if [ $attempt -eq "$max_attempts" ]; then
-      echo "❌ Failed after $max_attempts attempts: $description"
+      echo "❌ Failed after $max_attempts attempts: $description" >&2
       echo "$output" >&2
       return $exit_code
     fi
@@ -78,7 +78,7 @@ retry_azure_operation() {
       error_type="Conflict (409)"
     fi
 
-    echo "⚠️ $error_type - Retrying in ${delay}s..."
+    echo "⚠️ $error_type - Retrying in ${delay}s..." >&2
     # Show the actual error for debugging
     if [ "$error_type" = "Unknown error" ]; then
       echo "Error details:" >&2
