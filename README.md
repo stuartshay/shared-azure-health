@@ -145,6 +145,48 @@ verify_deployment \
   "https://my-function-app.azurewebsites.net"
 ```
 
+### Policy Query Utils (`scripts/policy-query.sh`)
+
+Utilities for querying Azure Policy assignments, exemptions, and compliance states.
+
+**Features:**
+- Query policy assignments with compliance states
+- Get policy descriptions from definitions
+- Find non-compliant resources
+- Query policy exemptions
+- Format policy data for Markdown display
+- Generate complete policy status reports
+
+**Functions:**
+- `get_policy_assignments_with_compliance <resource-group-name>`
+- `get_policy_description <policy-definition-id>`
+- `get_noncompliant_resources <resource-group-name> <policy-assignment-name>`
+- `get_policy_assignments <resource-group-name>` (legacy)
+- `get_policy_exemptions <resource-group-name>`
+- `format_policy_assignments <json-array> <resource-group-name>`
+- `format_policy_exemptions <json-array>`
+- `generate_policy_report <resource-group-name>`
+
+**Usage:**
+
+```bash
+source scripts/policy-query.sh
+
+# Generate a complete policy status report
+generate_policy_report "my-resource-group"
+
+# Query specific policy assignments with compliance
+assignments=$(get_policy_assignments_with_compliance "my-resource-group")
+format_policy_assignments "$assignments" "my-resource-group"
+
+# Get policy exemptions
+exemptions=$(get_policy_exemptions "my-resource-group")
+format_policy_exemptions "$exemptions"
+
+# Find non-compliant resources
+noncompliant=$(get_noncompliant_resources "my-resource-group" "policy-assignment-name")
+```
+
 ## Tag Convention
 
 All projects must tag their resources with:
